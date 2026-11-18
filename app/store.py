@@ -2,12 +2,14 @@ import sqlite3, json
 from pathlib import Path
 from app.errors import BusinessError
 
+RESULT_SCHEMA = "CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, digest TEXT UNIQUE NOT NULL, result TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1, status TEXT NOT NULL DEFAULT '待复核')"
+
 def connect(path):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     con=sqlite3.connect(path,timeout=15)
     con.row_factory=sqlite3.Row
     con.execute('PRAGMA journal_mode=WAL')
-    con.execute("CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, digest TEXT UNIQUE NOT NULL, result TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1, status TEXT NOT NULL DEFAULT '待复核')")
+    con.execute(RESULT_SCHEMA)
     return con
 
 def save(path, result):
@@ -17,9 +19,11 @@ def save(path, result):
     return get(path,run_id)
 
 def get(path, run_id):
+    from app import corrections
     with connect(path) as con: row=con.execute('SELECT * FROM runs WHERE id=?',(run_id,)).fetchone()
     if not row: raise BusinessError('NOT_FOUND','批次不存在',404)
     result=json.loads(row['result']);result.update(revision=row['revision'],status=row['status'])
+    corrections.ensure(result)
     return result
 
 def history(path):

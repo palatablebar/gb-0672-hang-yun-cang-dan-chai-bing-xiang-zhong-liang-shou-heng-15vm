@@ -56,13 +56,26 @@
     "path": "引用路径",
     "detail": "原因",
     "input": "输入行",
-    "accepted": "采纳行",
+    "accepted": "采纳补正",
     "quarantined": "隔离行",
     "row_balanced": "行守恒",
     "declaration_differences": "申报差异",
     "graph_errors": "关系错误",
     "weight_errors": "重量差异",
     "child": "子单号",
-    "classes": "危险类组合"
+    "classes": "危险类组合",
+    "package_id": "补正包",
+    "source": "采用来源",
+    "sources": "来源包",
+    "delta": "变化",
+    "decision": "裁决",
+    "basis": "裁决依据",
+    "blockers": "阻断原因",
+    "rejected": "退回补正",
+    "digest": "内容摘要",
+    "change_count": "改动数",
+    "declaration": "申报汇总",
+    "declaration_changes": "申报汇总变化",
+    "consistent": "一致"
   }
 }

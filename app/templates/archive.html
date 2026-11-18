@@ -1,1 +1,60 @@
-{% extends 'base.html' %}{% block content %}<div class="sheet-grid"><section class="panel index"><h2>装箱索引<sup>1</sup></h2>{% for root in state.graph.roots %}<details open><summary>{{ root }}</summary>{% for child in state.graph.children[root] %}<div class="branch">{{ child }}<small>{{ state.graph.children[child]|length }} 项</small></div>{% endfor %}</details>{% endfor %}</section><section class="panel data-panel"><h2>版本封存<sup>2</sup><small>{{ view.rows|length }} 条</small></h2>{{ records(view.rows) }}</section><div class="right-column"><section class="panel stamps"><h2>封存记录</h2><div class="stamp">{{ state.archive.status }}</div><div class="checksum">{{ state.archive.seal[:24] }}</div><a href="/api/export/{{ state.manifest.run_id }}">下载封存件</a></section><section class="panel"><h2>阻断凭据<sup>3</sup></h2>{{ records(state.hazard_issues+state.graph.errors) }}</section><section class="panel"><h2>采信隔离</h2>{{ records(state.quarantine) }}</section></div></div>{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<div class="sheet-grid">
+  <section class="panel index"><h2>装箱索引<sup>1</sup></h2>{% for root in state.graph.roots %}<details open><summary>{{ root }}</summary>{% for child in state.graph.children[root] %}<div class="branch">{{ child }}<small>{{ state.graph.children[child]|length }} 项</small></div>{% endfor %}</details>{% endfor %}</section>
+  <section class="panel data-panel">
+    <h2>补正裁量<sup>2</sup><small>{{ state.corrections.roots|length }} 张主单</small></h2>
+    <div class="table-scroll"><table>
+      <thead><tr><th>主单</th><th>当前版本</th><th>采用来源</th><th>件数</th><th>净重 kg</th><th>毛重 kg</th><th>裁决</th><th>阻断原因</th></tr></thead>
+      <tbody>
+      {% for row in state.corrections.roots %}
+        <tr>
+          <td>{{ row.id }}</td>
+          <td class="num">v{{ row.revision }}</td>
+          <td>{{ row.source }}{% if row.changes or row.declaration_changes %}<small>{{ row.basis }}</small>{% endif %}</td>
+          <td class="num">{{ row.pieces.base }} → {{ row.pieces.current }} <small>({{ '%+d'|format(row.pieces.delta) }})</small></td>
+          <td class="num">{{ row.net_kg.base }} → {{ row.net_kg.current }} <small>({{ row.net_kg.delta }})</small></td>
+          <td class="num">{{ row.gross_kg.base }} → {{ row.gross_kg.current }} <small>({{ row.gross_kg.delta }})</small></td>
+          <td class="{% if not row.consistent %}fail{% endif %}">{% if row.consistent %}一致{% else %}阻断{% endif %}</td>
+          <td>{% for blocker in row.blockers %}<div class="blocker"><code>{{ blocker.code }}</code> {{ blocker.id }} {{ blocker.detail }}</div>{% else %}—{% endfor %}</td>
+        </tr>
+        {% if row.changes or row.declaration_changes %}
+        <tr class="detail-row"><td colspan="8">
+          {% for change in row.changes %}<div class="changelog"><b>{{ change.package_id }}</b> v{{ change.revision }} · {{ change.id }}：{% for field, values in change.changed.items() %}{{ field }} {{ values.before }} → {{ values.after }}{% if not loop.last %}；{% endif %}{% endfor %}<small>件 {{ change.before.pieces }}→{{ change.after.pieces }} / 净 {{ change.before.net_kg }}→{{ change.after.net_kg }} / 毛 {{ change.before.gross_kg }}→{{ change.after.gross_kg }}</small></div>{% endfor %}
+          {% for update in row.declaration_changes %}<div class="changelog"><b>{{ update.package_id }}</b> 申报汇总：件 {{ update.before.pieces }}→{{ update.after.pieces }} / 净 {{ update.before.net_kg }}→{{ update.after.net_kg }} / 毛 {{ update.before.gross_kg }}→{{ update.after.gross_kg }}</div>{% endfor %}
+        </td></tr>
+        {% endif %}
+      {% else %}<tr><td colspan="8">暂无主单。</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+    <div class="correction-meta">
+      <span>采纳补正包 {{ state.corrections.accepted|length }}</span>
+      <span>退回补正包 {{ state.corrections.rejected|length }}</span>
+    </div>
+  </section>
+  <div class="right-column">
+    <section class="panel stamps">
+      <h2>封存记录</h2>
+      <div class="stamp">{{ state.archive.status }}</div>
+      <div class="checksum">{{ state.archive.seal[:24] }}</div>
+      {% if state.archive.status == '可封存' %}<a href="/api/export/{{ state.manifest.run_id }}?sealed=1">下载封存件</a>{% endif %}
+      <a href="/api/export/{{ state.manifest.run_id }}">下载证据包</a>
+    </section>
+    <section class="panel"><h2>退回补正<sup>3</sup></h2>{{ records(state.corrections.rejected) }}</section>
+    <section class="panel"><h2>阻断凭据<sup>3</sup></h2>{{ records(state.hazard_issues+state.graph.errors) }}</section>
+    <section class="panel"><h2>采信隔离</h2>{{ records(state.quarantine) }}</section>
+  </div>
+</div>
+<details class="source-input">
+  <summary>接收补正包</summary>
+  <input id="correction-package-id" placeholder="补正包编号" aria-label="补正包编号">
+  <textarea id="correction-text" aria-label="补正内容" placeholder="id,revision,gross&#10;M001,2,442"></textarea>
+  <div class="declaration-row">
+    <label>申报件数 <input id="declaration-pieces" inputmode="numeric" placeholder="留空沿用"></label>
+    <label>申报净重 <input id="declaration-net" inputmode="decimal" placeholder="留空沿用"></label>
+    <label>申报毛重 <input id="declaration-gross" inputmode="decimal" placeholder="留空沿用"></label>
+  </div>
+  <button id="apply-correction">应用补正</button>
+  <small class="hint">只填改动字段；空单元格表示该项沿用当前版本。版本号须紧接当前版本。</small>
+</details>
+{% endblock %}

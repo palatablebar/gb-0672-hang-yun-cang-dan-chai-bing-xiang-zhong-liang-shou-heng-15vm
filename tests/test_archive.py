@@ -17,3 +17,18 @@ def test_weight_seal_changes(clean):
     state=deepcopy(clean);state['weight_checks'][0]['difference']='9';assert decide(state)['seal']!=clean['archive']['seal']
 def test_bundle_manifest(clean):
     z=zipfile.ZipFile(io.BytesIO(serialize(clean)));assert json.loads(z.read('manifest.json'))['sha256']==clean['manifest']['sha256']
+
+
+def test_serialize_includes_original_intake(clean):
+    z=zipfile.ZipFile(io.BytesIO(serialize(clean)))
+    assert 'intake_source.json' in z.namelist()
+    source=json.loads(z.read('intake_source.json'))
+    assert len(source['records'])==42
+
+
+def test_serialize_seal_only_when_sealable(clean,sample):
+    from app.archive import serialize
+    sealable=zipfile.ZipFile(io.BytesIO(serialize(clean)))
+    assert 'seal.json' in sealable.namelist()
+    blocked=zipfile.ZipFile(io.BytesIO(serialize(sample)))
+    assert 'seal.json' not in blocked.namelist()
